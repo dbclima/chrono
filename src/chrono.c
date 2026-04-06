@@ -1,70 +1,126 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <getopt.h>
 
 #include "../include/status.h"
 
-// #define Y(enum, string)
-#define PERF_METRIC_TABLE   	\
-	Y(MIN , "min") 		\
-	Y(MAX , "max") 		\
-	Y(MEAN, "mean")		\
-	Y(SUM , "sum")		\
-
-// #define X(alias, default, description)
-#define OPT_TABLE \
-	X("h", NULL  , "Displays this menu\n") \
-	X("v", NULL  , "Display Logging information to the user about excecution") \
-	X("n", "1"   , "Sets number of iterations to execute the target command") \
-	X("m", "mean", "Sets the metric for performance measurements among iterations") \
-
+#define PERF_METRICS	\
+	X(MEAN, "mean") \
+	X(MIN , "min" ) \
+	X(MAX , "max" ) \
+	X(SUM , "sum" )
 
 typedef enum
 {
-	#define Y(enum, string) enum,
-	PERF_METRIC_TABLE
-	#undef Y
+	#define X(name, string) 	name,
+	
+	PERF_METRICS
+	INVALID_METRIC
+
+	#undef X
 }
 perf_metric_t;
 
-void print_metric(perf_metric_t metric)
+perf_metric_t parseMetric(char* metric)
 {
-	switch (metric)
-	{
-		#define Y(name, string) case name: printf("[LOG] Current Metric =  %s\n", string); break;
-		PERF_METRIC_TABLE
-		#undef Y
-	}
+	#define X(name, string)		if(strcmp(string, metric) == 0) return name;
+
+	PERF_METRICS
+	return INVALID_METRIC;
+
+	#undef X
+}
+
+// #define X(chr, str, arg_rule, hint)
+#define OPT_TABLE \
+	X('h', "help"	      , no_argument	  , "Displays this menu\n")	\
+	X('n', "n-iterations" , required_argument , "Sets number of iterations")  \
+	X('m', "perf-metric"  , required_argument , "Sets the performance metric")
+
+#define DFT_N_ITERATIONS	1
+#define DFT_PERF_METRIC		MEAN
+
+void print_help()
+{
+	puts("cli options:");
+
+	#define X(chr, str, arg_rule, hint)				       \
+		printf("  -%c | --%10s : %s\n", chr, str, hint);		       \
+		puts("");
+
+	OPT_TABLE
+
+	#undef X
 }
 
 
-
-static int flag_verbose = 0;
-
 int main(int argc, char** argv)
 {
+	int n_iterations = DFT_N_ITERATIONS;
+	perf_metric_t metric = DFT_PERF_METRIC;
+
+	#define X(chr, str, arg_rule, hint)			       \
+		{str, arg_rule, NULL, chr},
+
+	struct option long_opts[] = {
+		OPT_TABLE
+	};
+
+	#undef X
+
+	#define X(chr, str, arg_rule, hint)				       \
+		chr,
+
+	char short_opts[] = {
+		OPT_TABLE '\0'
+	};
+
+	#undef X
+
 	int opt;
-
-
-	while ((opt = getopt(argc, argv, "n:h")) != -1)
+	while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1)
 	{
-		printf("%c %d \n", opt, opt);
 		switch(opt)
 		{
-			case 'n':
-				printf("%s\n", optarg);
-				break;
-
 			case 'h':
-				printf("Help command");
+				print_help();
 				break;
 
-			default:
-				printf("Opcao desconhecida %c", opt);
-		}
+			case 'n':
+				n_iterations = atoi(optarg);
 
+				if (n_iterations <= 0)
+				{
+					puts("Invalid [n | n-iterations] parameter");
+					exit(OK);
+				}
+
+				break;
+
+			case 'm':
+				metric = parseMetric(optarg);
+				
+				if (metric == INVALID_METRIC)
+				{
+					puts("Invalid [m | perf-metric] parameter"
+	  				     "should be [ mean | max | min | sum ]");
+				}
+				
+				break;
+			
+			case '?':
+				puts("Invalid parameter");
+				print_help();
+
+			
+				
+				
+				
+				
+		}
 	}
 
 	return OK;
