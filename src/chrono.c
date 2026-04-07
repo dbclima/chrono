@@ -1,61 +1,35 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <getopt.h>
 
-#include "../include/status.h"
+#include "../include/perf_metric.h"
 
-#define PERF_METRICS	\
-	X(MEAN, "mean") \
-	X(MIN , "min" ) \
-	X(MAX , "max" ) \
-	X(SUM , "sum" )
+#define OK		0
 
-typedef enum
-{
-	#define X(name, string) 	name,
-	
-	PERF_METRICS
-	INVALID_METRIC
-
-	#undef X
-}
-perf_metric_t;
-
-perf_metric_t parseMetric(char* metric)
-{
-	#define X(name, string)		if(strcmp(string, metric) == 0) return name;
-
-	PERF_METRICS
-	return INVALID_METRIC;
-
-	#undef X
-}
+#define HANDLE_no_argument(chr) 		chr
+#define HANDLE_required_argument(chr)		chr, ':'
 
 // #define X(chr, str, arg_rule, hint)
 #define OPT_TABLE \
-	X('h', "help"	      , no_argument	  , "Displays this menu\n")	\
+	X('h', "help"	      , no_argument	  , "Displays this menu")	\
 	X('n', "n-iterations" , required_argument , "Sets number of iterations")  \
 	X('m', "perf-metric"  , required_argument , "Sets the performance metric")
 
 #define DFT_N_ITERATIONS	1
-#define DFT_PERF_METRIC		MEAN
 
 void print_help()
 {
 	puts("cli options:");
 
 	#define X(chr, str, arg_rule, hint)				       \
-		printf("  -%c | --%10s : %s\n", chr, str, hint);		       \
-		puts("");
+		printf("  [ --%-15s | -%c ] : %s\n", str, chr, hint);
 
 	OPT_TABLE
 
 	#undef X
 }
-
 
 int main(int argc, char** argv)
 {
@@ -72,13 +46,15 @@ int main(int argc, char** argv)
 	#undef X
 
 	#define X(chr, str, arg_rule, hint)				       \
-		chr,
+		HANDLE_ ## arg_rule(chr),
 
 	char short_opts[] = {
 		OPT_TABLE '\0'
 	};
 
 	#undef X
+
+	printf("%s\n", short_opts);
 
 	int opt;
 	while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1)
@@ -90,7 +66,8 @@ int main(int argc, char** argv)
 				break;
 
 			case 'n':
-				n_iterations = atoi(optarg);
+				printf("%s\n", optarg);
+				// n_iterations = atoi(optarg);
 
 				if (n_iterations <= 0)
 				{
@@ -114,14 +91,10 @@ int main(int argc, char** argv)
 			case '?':
 				puts("Invalid parameter");
 				print_help();
-
-			
-				
-				
-				
-				
 		}
 	}
+
+	printf("Programa %s", argv[0]);
 
 	return OK;
 }
